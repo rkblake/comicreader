@@ -24,12 +24,13 @@ void UnloadComic();
 void DrawHelp();
 
 int main() {
-    const int screenWidth = 800;
-    const int screenHeight = 600;
+    const int screenWidth = GetScreenWidth();
+    const int screenHeight = GetScreenHeight();
 
+    SetTraceLogLevel(LOG_WARNING);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Comic Reader");
     SetTargetFPS(60);
-    SetTraceLogLevel(LOG_ERROR);
 
     while (!WindowShouldClose()) {
         // Update
@@ -52,15 +53,43 @@ int main() {
         if (IsKeyPressed(KEY_M)) mangaMode = !mangaMode;
         if (IsKeyPressed(KEY_D)) doublePage = !doublePage;
         if (IsKeyPressed(KEY_F)) {
-            zoom = 1.0f;
+            if (!pages.empty()) {
+                float screenW = GetScreenWidth();
+                float screenH = GetScreenHeight();
+                float combinedW = 0;
+                float maxH = 0;
+
+                if (doublePage && currentPage + 1 < pages.size()) {
+                    combinedW = pages[currentPage].texture.width + pages[currentPage+1].texture.width;
+                    maxH = std::max(pages[currentPage].texture.height, pages[currentPage+1].texture.height);
+                } else {
+                    combinedW = pages[currentPage].texture.width;
+                    maxH = pages[currentPage].texture.height;
+                }
+                
+                zoom = std::min(screenW / combinedW, screenH / maxH);
+            } else {
+                zoom = 1.0f;
+            }
             offset = {0.0f, 0.0f};
             rotation = 0.0f;
         }
-        if (IsKeyPressed(KEY_O)) {
-            // File dialog logic would go here.
-            // For now, we'll just load a test file.
-            LoadComic("test.cbz");
+        
+        // if (IsKeyPressed(KEY_O)) {
+        //     // File dialog logic would go here.
+        //     // For now, we'll just load a test file.
+        //     LoadComic("test.cbz");
+        // }
+        
+        if (IsFileDropped()) {
+            std::cout << "Detected file drop" << std::endl;
+            FilePathList files = LoadDroppedFiles();
+            if (files.count == 1) {
+                LoadComic(files.paths[0]);
+            }
+            UnloadDroppedFiles(files);
         }
+
         if (IsKeyPressed(KEY_R)) rotation += 90.0f;
         if (IsKeyPressed(KEY_Q)) break;
 
@@ -77,20 +106,40 @@ int main() {
         ClearBackground(BLACK);
 
         if (!pages.empty()) {
-            if (doublePage) {
-                int leftPage = currentPage;
-                int rightPage = currentPage + 1;
-                if (mangaMode) std::swap(leftPage, rightPage);
+            if (doublePage && currentPage + 1 < pages.size()) {
+                int page1_idx = mangaMode ? currentPage + 1 : currentPage;
+                int page2_idx = mangaMode ? currentPage : currentPage + 1;
 
-                if (leftPage >= 0 && leftPage < pages.size()) {
-                    DrawTexturePro(pages[leftPage].texture, {0, 0, (float)pages[leftPage].texture.width, (float)pages[leftPage].texture.height}, {(float)GetScreenWidth()/4 + offset.x, (float)GetScreenHeight()/2 + offset.y, pages[leftPage].texture.width * zoom, pages[leftPage].texture.height * zoom}, {(float)pages[leftPage].texture.width*zoom/2, (float)pages[leftPage].texture.height*zoom/2}, rotation, WHITE);
-                }
-                if (rightPage >= 0 && rightPage < pages.size()) {
-                    DrawTexturePro(pages[rightPage].texture, {0, 0, (float)pages[rightPage].texture.width, (float)pages[rightPage].texture.height}, {(float)GetScreenWidth()*3/4 + offset.x, (float)GetScreenHeight()/2 + offset.y, pages[rightPage].texture.width * zoom, pages[rightPage].texture.height * zoom}, {(float)pages[rightPage].texture.width*zoom/2, (float)pages[rightPage].texture.height*zoom/2}, rotation, WHITE);
-                }
+                Texture2D tex1 = pages[page1_idx].texture;
+                Texture2D tex2 = pages[page2_idx].texture;
+
+                float scaled_w1 = tex1.width * zoom;
+                float scaled_h1 = tex1.height * zoom;
+                float scaled_w2 = tex2.width * zoom;
+                float scaled_h2 = tex2.height * zoom;
+
+                float total_w = scaled_w1 + scaled_w2;
+                
+                float start_x = (GetScreenWidth() - total_w) / 2.0f;
+                
+                Vector2 origin = { 0, 0 };
+
+                Rectangle dest1 = { start_x + offset.x, (GetScreenHeight() - scaled_h1) / 2.0f + offset.y, scaled_w1, scaled_h1 };
+                DrawTexturePro(tex1, {0, 0, (float)tex1.width, (float)tex1.height}, dest1, origin, rotation, WHITE);
+
+                Rectangle dest2 = { start_x + scaled_w1 + offset.x, (GetScreenHeight() - scaled_h2) / 2.0f + offset.y, scaled_w2, scaled_h2 };
+                DrawTexturePro(tex2, {0, 0, (float)tex2.width, (float)tex2.height}, dest2, origin, rotation, WHITE);
+
             } else {
-                 DrawTexturePro(pages[currentPage].texture, {0, 0, (float)pages[currentPage].texture.width, (float)pages[currentPage].texture.height}, {(float)GetScreenWidth()/2 + offset.x, (float)GetScreenHeight()/2 + offset.y, pages[currentPage].texture.width * zoom, pages[currentPage].texture.height * zoom}, {(float)pages[currentPage].texture.width*zoom/2, (float)pages[currentPage].texture.height*zoom/2}, rotation, WHITE);
+                Texture2D tex = pages[currentPage].texture;
+                float scaled_w = tex.width * zoom;
+                float scaled_h = tex.height * zoom;
+                Vector2 origin = { scaled_w / 2, scaled_h / 2 };
+                Rectangle dest = { GetScreenWidth() / 2.0f + offset.x, GetScreenHeight() / 2.0f + offset.y, scaled_w, scaled_h };
+                DrawTexturePro(tex, {0, 0, (float)tex.width, (float)tex.height}, dest, origin, rotation, WHITE);
             }
+        } else {
+            DrawText("Drop a file to start reading", GetScreenWidth()/2.0, GetScreenHeight()/2.0, 20, WHITE);
         }
 
         if (helpVisible) {
@@ -159,7 +208,7 @@ void DrawHelp() {
     DrawText("M: Manga Mode", 20, 140, 10, BLACK);
     DrawText("D: Double Page", 20, 160, 10, BLACK);
     DrawText("F: Fit to Screen", 20, 180, 10, BLACK);
-    DrawText("O: Open File", 20, 200, 10, BLACK);
-    DrawText("R: Rotate", 20, 220, 10, BLACK);
-    DrawText("Q: Quit", 20, 240, 10, BLACK);
+    // DrawText("O: Open File", 20, 200, 10, BLACK);
+    DrawText("R: Rotate", 20, 200, 10, BLACK);
+    DrawText("Q: Quit", 20, 220, 10, BLACK);
 }
