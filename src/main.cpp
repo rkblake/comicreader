@@ -34,8 +34,19 @@ int main() {
     while (!WindowShouldClose()) {
         // Update
         if (IsKeyPressed(KEY_H)) helpVisible = !helpVisible;
-        if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_N)) currentPage++;
-        if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_P)) currentPage--;
+
+        int pageIncrement = doublePage ? 2 : 1;
+        bool nextPagePressed = IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_N);
+        bool prevPagePressed = IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_P);
+
+        if (mangaMode) {
+            if (nextPagePressed) currentPage -= pageIncrement;
+            if (prevPagePressed) currentPage += pageIncrement;
+        } else {
+            if (nextPagePressed) currentPage += pageIncrement;
+            if (prevPagePressed) currentPage -= pageIncrement;
+        }
+
         if (IsKeyPressed(KEY_EQUAL)) zoom += 0.1f;
         if (IsKeyPressed(KEY_MINUS)) zoom -= 0.1f;
         if (IsKeyPressed(KEY_M)) mangaMode = !mangaMode;
@@ -66,8 +77,20 @@ int main() {
         ClearBackground(BLACK);
 
         if (!pages.empty()) {
-            Rectangle dest = {offset.x, offset.y, pages[currentPage].texture.width * zoom, pages[currentPage].texture.height * zoom};
-            DrawTexturePro(pages[currentPage].texture, {0, 0, (float)pages[currentPage].texture.width, (float)pages[currentPage].texture.height}, dest, {0,0}, rotation, WHITE);
+            if (doublePage) {
+                int leftPage = currentPage;
+                int rightPage = currentPage + 1;
+                if (mangaMode) std::swap(leftPage, rightPage);
+
+                if (leftPage >= 0 && leftPage < pages.size()) {
+                    DrawTexturePro(pages[leftPage].texture, {0, 0, (float)pages[leftPage].texture.width, (float)pages[leftPage].texture.height}, {(float)GetScreenWidth()/4 + offset.x, (float)GetScreenHeight()/2 + offset.y, pages[leftPage].texture.width * zoom, pages[leftPage].texture.height * zoom}, {(float)pages[leftPage].texture.width*zoom/2, (float)pages[leftPage].texture.height*zoom/2}, rotation, WHITE);
+                }
+                if (rightPage >= 0 && rightPage < pages.size()) {
+                    DrawTexturePro(pages[rightPage].texture, {0, 0, (float)pages[rightPage].texture.width, (float)pages[rightPage].texture.height}, {(float)GetScreenWidth()*3/4 + offset.x, (float)GetScreenHeight()/2 + offset.y, pages[rightPage].texture.width * zoom, pages[rightPage].texture.height * zoom}, {(float)pages[rightPage].texture.width*zoom/2, (float)pages[rightPage].texture.height*zoom/2}, rotation, WHITE);
+                }
+            } else {
+                 DrawTexturePro(pages[currentPage].texture, {0, 0, (float)pages[currentPage].texture.width, (float)pages[currentPage].texture.height}, {(float)GetScreenWidth()/2 + offset.x, (float)GetScreenHeight()/2 + offset.y, pages[currentPage].texture.width * zoom, pages[currentPage].texture.height * zoom}, {(float)pages[currentPage].texture.width*zoom/2, (float)pages[currentPage].texture.height*zoom/2}, rotation, WHITE);
+            }
         }
 
         if (helpVisible) {
