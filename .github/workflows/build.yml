@@ -27,9 +27,9 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo add-apt-repository ppa:texus/raylib
+          sudo add-apt-repository ppa:texus/raylib || true
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             libraylib-dev \
             libzip-dev \
             pkg-config \
@@ -41,7 +41,6 @@ jobs:
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew update
           brew install raylib libzip pkg-config cmake
 
       # ----------------------------
@@ -53,7 +52,6 @@ jobs:
         with:
           vcpkgArguments: 'raylib libzip'
           vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-          vcpkgGitCommitId: 'latest'
 
       - name: Configure (CMake)
         run: >
@@ -65,6 +63,7 @@ jobs:
         run: cmake --build build --config Release --parallel
 
       - name: Archive build outputs
+        shell: bash
         run: |
           mkdir artifacts
           if [ "${{ runner.os }}" == "Linux" ]; then
@@ -95,7 +94,6 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release_artifacts/**/*   # attach all builds
+          files: release_artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
