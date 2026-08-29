@@ -2,11 +2,11 @@ name: Build & Release Comic Reader
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
     tags:
       - 'v*'   # trigger release workflow when pushing tags like v1.0.0
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -27,13 +27,23 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo add-apt-repository ppa:texus/raylib || true
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libraylib-dev \
+            libasound2-dev libx11-dev libxrandr-dev libxi-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libxcursor-dev libxinerama-dev \
+            libwayland-dev libxkbcommon-dev \
             libzip-dev \
             pkg-config \
-            cmake g++ make
+            cmake g++ make git
+
+      - name: Build raylib from source
+        if: runner.os == 'Linux'
+        run: |
+          git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
+          cd /tmp/raylib/src
+          make PLATFORM=PLATFORM_DESKTOP -j$(nproc)
+          sudo make install
+          sudo ldconfig
 
       # ----------------------------
       # macOS dependencies
