@@ -24,7 +24,7 @@ A simple comic book reader for `.cbz` files, built with C++, raylib, and libzip.
 | `M`         | Toggle Manga Mode     |
 | `D`         | Toggle Double-Page Mode|
 | `F`         | Fit to Screen         |
-| `O`         | Open File (Placeholder)|
+| `O`         | Open File (Not Implemented)|
 | `R`         | Rotate Page           |
 | `+`, `=`    | Zoom In               |
 | `-`         | Zoom Out              |
@@ -64,4 +64,3 @@ Run the executable from the `build` directory:
 ./comic-reader
 ```
 
-Place a `.cbz` file named `test.cbz` in the `build` directory or use the `O` key to load a file (note: file dialog is not yet implemented).

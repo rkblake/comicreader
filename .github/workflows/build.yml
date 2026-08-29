@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # ----------------------------
       # Linux dependencies
@@ -36,14 +36,27 @@ jobs:
             pkg-config \
             cmake g++ make git
 
-      - name: Build raylib from source
+      - name: Cache raylib installation (Linux)
         if: runner.os == 'Linux'
+        id: cache-raylib
+        uses: actions/cache@v6
+        with:
+          path: ${{ github.workspace }}/raylib-install
+          key: raylib-linux-5.5
+
+      - name: Build raylib from source
+        if: runner.os == 'Linux' && steps.cache-raylib.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch 5.5 https://github.com/raysan5/raylib.git /tmp/raylib
-          cd /tmp/raylib/src
-          make PLATFORM=PLATFORM_DESKTOP -j$(nproc)
-          sudo make install
-          sudo ldconfig
+          cd /tmp/raylib
+          mkdir build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_EXAMPLES=OFF \
+            -DBUILD_GAMES=OFF \
+            -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/raylib-install \
+            ..
+          cmake --build . --config Release --parallel $(nproc)
+          cmake --install .
 
       # ----------------------------
       # macOS dependencies
@@ -56,18 +69,36 @@ jobs:
       # ----------------------------
       # Windows dependencies (via vcpkg)
       # ----------------------------
+      - name: Cache vcpkg
+        if: runner.os == 'Windows'
+        uses: actions/cache@v6
+        with:
+          path: ${{ github.workspace }}/vcpkg
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
       - name: Setup vcpkg
         if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgArguments: 'raylib libzip'
-          vcpkgDirectory: '${{ github.workspace }}/vcpkg'
+        shell: pwsh
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git ${{ github.workspace }}/vcpkg
+          .\vcpkg\bootstrap-vcpkg.bat
+          .\vcpkg\vcpkg.exe install raylib libzip --triplet x64-windows
 
-      - name: Configure (CMake)
-        run: >
-          cmake -S . -B build
-          -DCMAKE_BUILD_TYPE=Release
-          ${{ runner.os == 'Windows' && '-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake' || '' }}
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
+        env:
+          PKG_CONFIG_PATH: ${{ github.workspace }}/raylib-install/lib/pkgconfig
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure CMake (macOS)
+        if: runner.os == 'macOS'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel
@@ -85,7 +116,7 @@ jobs:
           fi
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: comic-reader-${{ runner.os }}
           path: artifacts/*

@@ -8,7 +8,7 @@
 struct ComicPage {
     Texture2D texture;
     std::string filename;
-    bool isSpread;
+    bool isSpread = false;
 };
 
 struct ComicReader {
@@ -64,7 +64,7 @@ struct ComicReader {
         zip_close(za);
 
         std::sort(pages.begin(), pages.end(),
-                  [](const ComicPage a, const ComicPage b) { return a.filename < b.filename; });
+                  [](const ComicPage& a, const ComicPage& b) { return a.filename < b.filename; });
 
         currentPage = 0;
         helpVisible = false;
@@ -115,8 +115,11 @@ struct ComicReader {
                 if (doublePage && !pages[currentPage].isSpread && currentPage + 1 < pages.size()) {
                     combinedW =
                         pages[currentPage].texture.width + pages[currentPage + 1].texture.width;
-                    maxH = std::max(pages[currentPage].texture.height,
-                                    pages[currentPage + 1].texture.height);
+                    // maxH = std::max(pages[currentPage].texture.height,
+                    //                 pages[currentPage + 1].texture.height);
+                    maxH = pages[currentPage].texture.height > pages[currentPage + 1].texture.height ?
+                        pages[currentPage].texture.height :
+                        pages[currentPage + 1].texture.height;
                 } else {
                     combinedW = pages[currentPage].texture.width;
                     maxH = pages[currentPage].texture.height;
@@ -149,7 +152,8 @@ struct ComicReader {
             offset.y += GetMouseDelta().y;
         }
 
-        currentPage = std::max(0UL, std::min(pages.size() - 1, currentPage));
+        // currentPage = std::max(0UL, std::min(pages.size() - 1, currentPage));
+        currentPage = std::clamp(currentPage, size_t{0}, pages.size() - 1);
         zoom = std::clamp(zoom, 0.1f, 10.0f);
 
         // Draw
@@ -211,7 +215,7 @@ struct ComicReader {
         return false;
     }
 
-    void DrawHelp() {
+    static void DrawHelp() {
         DrawRectangle(10, 10, 250, 230, Fade(SKYBLUE, 0.9f));
         DrawRectangleLines(10, 10, 250, 230, BLUE);
         DrawText("Controls:", 20, 20, 10, BLACK);
@@ -228,8 +232,8 @@ struct ComicReader {
         DrawText("Q: Quit", 20, 220, 10, BLACK);
     }
 
-    void SetNotification(const std::string notification) {
-        this->notification = notification;
+    void SetNotification(const std::string& newNotification) {
+        notification = newNotification;
         notificationVisible = true;
         notificationDuration = 2.0f;
     }
