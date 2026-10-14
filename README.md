@@ -58,9 +58,21 @@ A simple comic book reader for `.cbz` files, built with C++, raylib, and libzip.
 
 ## Usage
 
-Run the executable from the `build` directory:
+Run the executable from the repository root:
 
 ```bash
-./comic-reader
+./build/comic-reader
 ```
+
+Dropping a `.cbz` file onto the window loads it. Drag with the left mouse button to pan.
+
+## Releases
+
+CI publishes prebuilt binaries for Linux, macOS, and Windows. raylib and libzip are linked
+statically, so only the platform's standard graphics/audio libraries are required at runtime.
+
+-   **Linux:** the binary still relies on the system X11/OpenGL and ALSA libraries.
+-   **macOS:** the binary is not code-signed, so Gatekeeper may block it. Remove the quarantine
+    attribute with `xattr -dr com.apple.quarantine ./comic-reader-macos` or right-click and choose
+    *Open*.
 
