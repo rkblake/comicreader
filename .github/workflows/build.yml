@@ -44,21 +44,21 @@ jobs:
       # ----------------------------
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install pkg-config cmake
+        run: brew install raylib libzip pkg-config cmake
 
       # ----------------------------
-      # Unix dependencies (raylib + libzip built statically into a cached prefix)
+      # Linux dependencies built from source (static raylib + libzip)
       # ----------------------------
-      - name: Cache native dependencies (Unix)
-        if: runner.os != 'Windows'
+      - name: Cache native dependencies (Linux)
+        if: runner.os == 'Linux'
         id: cache-deps
         uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/deps-install
-          key: deps-${{ runner.os }}-${{ runner.arch }}-raylib-5.5-libzip-1.11.4
+          key: deps-${{ runner.os }}-${{ runner.arch }}-raylib-5.5-libzip-1.11.4-v2
 
-      - name: Build native dependencies (Unix)
-        if: runner.os != 'Windows' && steps.cache-deps.outputs.cache-hit != 'true'
+      - name: Build native dependencies (Linux)
+        if: runner.os == 'Linux' && steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           PREFIX="${{ github.workspace }}/deps-install"
 
@@ -93,7 +93,7 @@ jobs:
           cmake --install /tmp/libzip/build
 
       # ----------------------------
-      # Windows dependencies (via vcpkg, static triplet)
+      # Windows dependencies (via vcpkg)
       # The clone always runs (needed for the toolchain file); the downloaded
       # package archives + installed tree are cached separately and installed
       # only on a cache miss.
@@ -120,25 +120,24 @@ jobs:
       - name: Install vcpkg packages
         if: runner.os == 'Windows' && steps.cache-vcpkg.outputs.cache-hit != 'true'
         shell: pwsh
-        run: .\vcpkg\vcpkg.exe install raylib libzip --triplet x64-windows-static
+        run: .\vcpkg\vcpkg.exe install raylib libzip --triplet x64-windows
 
       # ----------------------------
       # Configure + build
       # ----------------------------
-      - name: Configure CMake (Unix)
-        if: runner.os != 'Windows'
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
         env:
-          PKG_CONFIG_PATH: >-
-            ${{ github.workspace }}/deps-install/lib/pkgconfig:${{ github.workspace }}/deps-install/lib64/pkgconfig
+          PKG_CONFIG_PATH: ${{ github.workspace }}/deps-install/lib/pkgconfig
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure CMake (macOS)
+        if: runner.os == 'macOS'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
-        run: >
-          cmake -S . -B build
-          -DCMAKE_BUILD_TYPE=Release
-          "-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
-          "-DVCPKG_TARGET_TRIPLET=x64-windows-static"
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel

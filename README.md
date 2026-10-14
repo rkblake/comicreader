@@ -68,10 +68,13 @@ Dropping a `.cbz` file onto the window loads it. Drag with the left mouse button
 
 ## Releases
 
-CI publishes prebuilt binaries for Linux, macOS, and Windows. raylib and libzip are linked
-statically, so only the platform's standard graphics/audio libraries are required at runtime.
+CI publishes prebuilt binaries for Linux, macOS, and Windows.
 
--   **Linux:** the binary still relies on the system X11/OpenGL and ALSA libraries.
+-   **Linux:** raylib and libzip are built statically, so the binary only needs the usual system
+    libraries (X11/OpenGL, ALSA, and zlib).
+-   **macOS / Windows:** built against the platform package manager's raylib and libzip, so those
+    libraries must be available at runtime (`brew install raylib libzip`, or vcpkg's
+    `x64-windows` packages).
 -   **macOS:** the binary is not code-signed, so Gatekeeper may block it. Remove the quarantine
     attribute with `xattr -dr com.apple.quarantine ./comic-reader-macos` or right-click and choose
     *Open*.
