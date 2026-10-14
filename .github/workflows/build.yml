@@ -142,12 +142,32 @@ jobs:
       - name: Build (CMake)
         run: cmake --build build --config Release --parallel
 
+      - name: Build AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          APPDIR="$RUNNER_TEMP/comic-reader.AppDir"
+          rm -rf "$APPDIR"
+          mkdir -p "$APPDIR/usr/bin"
+          cp build/comic-reader "$APPDIR/usr/bin/comic-reader"
+          cp packaging/appimage/AppRun "$APPDIR/AppRun"
+          chmod +x "$APPDIR/AppRun"
+          cp packaging/appimage/comic-reader.desktop "$APPDIR/comic-reader.desktop"
+          python3 packaging/appimage/generate_icon.py "$APPDIR/comic-reader.png"
+
+          curl -fL -o "$RUNNER_TEMP/appimagetool.AppImage" \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool.AppImage"
+          ARCH=x86_64 "$RUNNER_TEMP/appimagetool.AppImage" --appimage-extract-and-run \
+            "$APPDIR" "${{ github.workspace }}/comic-reader-linux.AppImage"
+
       - name: Archive build outputs
         shell: bash
         run: |
           mkdir -p artifacts
           if [ "${{ runner.os }}" == "Linux" ]; then
             cp build/comic-reader artifacts/comic-reader-linux
+            cp comic-reader-linux.AppImage artifacts/comic-reader-linux.AppImage
           elif [ "${{ runner.os }}" == "macOS" ]; then
             cp build/comic-reader artifacts/comic-reader-macos
           else
@@ -167,6 +187,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
+      actions: read
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v8
@@ -174,9 +195,17 @@ jobs:
           path: ./release_artifacts
           merge-multiple: true
 
+      - name: List downloaded release files
+        run: find release_artifacts -type f -printf '%p (%s bytes)\n' | sort
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          files: release_artifacts/**/*
+          files: |
+            release_artifacts/comic-reader-linux
+            release_artifacts/comic-reader-linux.AppImage
+            release_artifacts/comic-reader-macos
+            release_artifacts/comic-reader-windows.exe
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Comic Reader
+Comment=Read .cbz comic archives
+Exec=comic-reader
+Icon=comic-reader
+Categories=Graphics;Viewer;
+Terminal=false

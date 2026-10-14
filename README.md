@@ -70,8 +70,10 @@ Dropping a `.cbz` file onto the window loads it. Drag with the left mouse button
 
 CI publishes prebuilt binaries for Linux, macOS, and Windows.
 
--   **Linux:** raylib and libzip are built statically, so the binary only needs the usual system
-    libraries (X11/OpenGL, ALSA, and zlib).
+-   **Linux:** a plain binary and an **AppImage** (`comic-reader-linux.AppImage`) are published.
+    raylib and libzip are built statically, so the binary only needs the usual system libraries
+    (X11/OpenGL, ALSA, and zlib). To run the AppImage:
+    `chmod +x comic-reader-linux.AppImage && ./comic-reader-linux.AppImage`.
 -   **macOS / Windows:** built against the platform package manager's raylib and libzip, so those
     libraries must be available at runtime (`brew install raylib libzip`, or vcpkg's
     `x64-windows` packages).
